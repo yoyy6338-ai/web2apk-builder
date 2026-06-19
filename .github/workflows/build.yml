@@ -1,0 +1,45 @@
+name: Flutter APK Builder
+
+on:
+  workflow_dispatch:
+    inputs:
+      zip_url:
+        description: "Flutter ZIP URL"
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Download ZIP
+        run: wget "${{ github.event.inputs.zip_url }}" -O project.zip
+
+      - name: Extract ZIP
+        run: unzip -o project.zip -d source
+
+      - name: Find Project
+        run: find source -name pubspec.yaml
+
+      - name: Pub Get
+        run: |
+          cd source
+          flutter pub get
+
+      - name: Build APK
+        run: |
+          cd source
+          flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: source/build/app/outputs/flutter-apk/*.apk
