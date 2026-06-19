@@ -1,1 +1,25 @@
+plugins {
+    id 'com.android.application'
+}
 
+android {
+    namespace 'com.builder.web2apk'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.builder.web2apk"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+}
+
+dependencies {
+}
