@@ -1,0 +1,113 @@
+name: Flutter APK Builder
+
+on:
+  workflow_dispatch:
+    inputs:
+      zip_url:
+        description: "URL ZIP Flutter Project"
+        required: false
+        type: string
+      url:
+        description: "Website URL"
+        required: false
+        type: string
+      app_name:
+        description: "App Name"
+        required: false
+        type: string
+      package_name:
+        description: "Package Name"
+        required: false
+        type: string
+      user_id:
+        description: "Telegram User ID"
+        required: false
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Show Inputs
+        run: |
+          echo "ZIP URL: ${{ github.event.inputs.zip_url }}"
+          echo "APP NAME: ${{ github.event.inputs.app_name }}"
+          echo "PACKAGE: ${{ github.event.inputs.package_name }}"
+          echo "USER ID: ${{ github.event.inputs.user_id }}"
+
+      - name: Validate ZIP URL
+        run: |
+          if [ -z "${{ github.event.inputs.zip_url }}" ]; then
+            echo "ERROR: zip_url kosong"
+            exit 1
+          fi
+
+      - name: Download ZIP
+        run: |
+          wget "${{ github.event.inputs.zip_url }}" -O project.zip
+
+      - name: Extract ZIP
+        run: |
+          mkdir source
+          unzip -o project.zip -d source
+
+      - name: Find Flutter Project
+        run: |
+          PUBSPEC=$(find source -type f -name "pubspec.yaml" | head -n 1)
+
+          if [ -z "$PUBSPEC" ]; then
+            echo "ERROR: pubspec.yaml tidak ditemukan"
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$PUBSPEC")
+
+          echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
+
+          echo "Flutter project ditemukan:"
+          echo "$PROJECT_DIR"
+
+      - name: Flutter Doctor
+        run: flutter doctor -v
+
+      - name: Install Dependencies
+        run: |
+          cd "$PROJECT_DIR"
+          flutter pub get
+
+      - name: Build APK Release
+        run: |
+          cd "$PROJECT_DIR"
+          flutter build apk --release
+
+      - name: Locate APK
+        run: |
+          APK=$(find "$PROJECT_DIR/build" -name "*.apk" | head -n 1)
+
+          if [ -z "$APK" ]; then
+            echo "ERROR: APK tidak ditemukan"
+            exit 1
+          fi
+
+          cp "$APK" release.apk
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: release.apk
